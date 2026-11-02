@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:,">
+<title>처인구 도로구조물 지도</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<style>
+:root{--panel:384px;--sheet:0px;--c0:#d93025;--c1:#e37400;--c2:#1a73e8;--c3:#795548;--c4:#9334e6;--c5:#188038;
+  --txt:#202124;--mut:#5f6368;--line:#e8eaed;--blue:#1a73e8;--blue2:#1967d2}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  color:var(--txt);-webkit-tap-highlight-color:transparent}
+button{font-family:inherit}
+#map{position:fixed;top:0;bottom:0;right:0;left:var(--panel);background:#e5e3df}
+#panel{position:fixed;left:0;top:0;bottom:0;width:var(--panel);background:#fff;z-index:1000;
+  box-shadow:0 0 14px rgba(0,0,0,.2);display:flex;flex-direction:column}
+#grab{display:none;height:22px;flex:none;cursor:grab;touch-action:none}
+#grab:before{content:"";display:block;width:38px;height:4px;border-radius:2px;background:#dadce0;margin:9px auto 0}
+.top{padding:12px 12px 4px;border-bottom:1px solid var(--line);flex:none}
+.title{font-size:13px;color:var(--mut);margin:0 4px 10px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.title b{color:var(--txt);font-size:14.5px}
+.title a{color:var(--blue2);text-decoration:none;white-space:nowrap;font-size:12.5px}
+.search{display:flex;align-items:center;border-radius:24px;box-shadow:0 1px 3px rgba(60,64,67,.35);padding:0 4px 0 16px;height:46px;background:#fff}
+.search svg{flex:none;color:var(--mut)}
+.search input{flex:1;border:0;outline:0;font-size:16px;background:none;min-width:0;padding:0 10px;color:var(--txt)}
+.search input::-webkit-search-cancel-button{display:none}
+.search button{border:0;background:none;font-size:22px;line-height:1;color:var(--mut);width:38px;height:38px;border-radius:50%;cursor:pointer}
+.search button:hover{background:#f1f3f4}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid #dadce0;border-radius:16px;padding:5px 11px;
+  font-size:13px;background:#fff;cursor:pointer;color:var(--txt)}
+.chip i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.chip .n{color:var(--mut);font-size:12px}
+.chip.on{background:#e8f0fe;border-color:var(--blue);color:var(--blue2)}
+.chip.on .n{color:var(--blue2)}
+.bar{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--mut);padding:2px 2px 4px}
+.seg{display:flex;gap:2px}
+.seg button{border:0;background:none;font-size:12.5px;padding:4px 9px;border-radius:12px;color:var(--mut);cursor:pointer}
+.seg button.on{background:#e8f0fe;color:var(--blue2);font-weight:700}
+#list,#detail{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:env(safe-area-inset-bottom)}
+.row{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);
+  background:#fff;padding:10px 14px;cursor:pointer;font:inherit;color:inherit}
+.row:hover{background:#f8f9fa}
+.row.sel{background:#e8f0fe}
+.rt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.rt b{font-size:15px;font-weight:700}
+.rt small{font-size:12.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.is-done .rt b{color:var(--mut);font-weight:600}
+.dist{font-size:12.5px;color:var(--blue2);flex:none;font-weight:600}
+.empty{padding:28px 18px;color:var(--mut);font-size:14px;text-align:center}
+.src{padding:14px 16px 20px;font-size:12px;color:var(--mut);line-height:1.6}
+.src a{color:var(--blue2)}
+.dot{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;
+  font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.45);flex:none;line-height:1}
+.dot.big{width:34px;height:34px;font-size:15px;margin-top:3px}
+.c0{background:var(--c0)}.c1{background:var(--c1)}.c2{background:var(--c2)}.c3{background:var(--c3)}.c4{background:var(--c4)}.c5{background:var(--c5)}
+.dot.rm{background:#9aa0a6;border-style:dashed}
+.dot.done{opacity:.5}
+.pin,.clu,.hi,.num{background:none;border:0}
+.leaflet-tooltip.lbl{background:none;border:0;box-shadow:none;padding:0 0 0 2px;font-size:12.5px;font-weight:700;color:#202124;
+  text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 4px #fff,0 0 5px #fff;display:none;white-space:nowrap}
+.leaflet-tooltip.lbl:before{display:none}
+#map.labels-on .leaflet-tooltip.lbl{display:block}
+#map.sat .leaflet-tooltip.lbl{color:#fff;text-shadow:0 0 2px #000,0 0 3px #000,0 0 4px #000}
+.clu div{width:34px;height:34px;border-radius:50%;background:rgba(32,33,36,.84);color:#fff;font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.hi div{width:46px;height:46px;border-radius:50%;border:3px solid var(--blue);background:rgba(26,115,232,.14);animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.55);opacity:1}100%{transform:scale(1.25);opacity:.25}}
+.num div{width:18px;height:18px;border-radius:50%;background:#202124;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:1.5px solid #fff}
+.me div{width:18px;height:18px;border-radius:50%;background:#4285f4;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 1px 4px rgba(0,0,0,.4)}
+/* 상세 */
+.dh{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 0}
+.dh button{border:0;background:none;font-size:14px;color:var(--blue2);padding:8px 12px;border-radius:18px;cursor:pointer}
+.dh button:hover{background:#f1f3f4}
+.dt{display:flex;gap:12px;align-items:flex-start;padding:4px 18px 2px}
+.dt h2{margin:0;font-size:22px;font-weight:700;word-break:keep-all}
+.muted{color:var(--mut);font-size:14px;margin-top:3px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;padding:8px 18px 4px}
+.tag{font-size:12.5px;padding:3px 9px;border-radius:12px;background:#f1f3f4;color:#3c4043}
+.tag.warn{background:#fce8e6;color:#c5221f}.tag.ok{background:#e6f4ea;color:#137333}
+.acts{display:flex;gap:2px;justify-content:space-around;padding:12px 6px 14px;border-bottom:1px solid var(--line)}
+.act{display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:var(--blue2);font-size:12px;
+  min-width:62px;background:none;border:0;cursor:pointer;padding:0}
+.act .ic{width:42px;height:42px;border-radius:50%;border:1px solid #dadce0;display:flex;align-items:center;justify-content:center;background:#fff}
+.act.primary .ic{background:var(--blue);border-color:var(--blue);color:#fff}
+.act:hover .ic{background:#f1f3f4}.act.primary:hover .ic{background:var(--blue2)}
+.info .ln{display:flex;gap:14px;align-items:baseline;padding:10px 18px;font-size:14px;border-bottom:1px solid #f1f3f4}
+.info .k{color:var(--mut);width:70px;flex:none;font-size:13px;white-space:nowrap}
+.info .v{flex:1;word-break:keep-all;line-height:1.45}
+.info .ln button{border:0;background:none;color:var(--blue2);font-size:13px;cursor:pointer;padding:0 2px;flex:none}
+.acts2{display:flex;gap:8px;flex-wrap:wrap;padding:14px 18px 4px}
+.btn{border:1px solid #dadce0;background:#fff;border-radius:18px;padding:8px 14px;font-size:13.5px;cursor:pointer;color:var(--blue2)}
+.btn:hover{background:#f8f9fa}
+.btn.on{background:#e6f4ea;border-color:#81c995;color:#137333}
+.fine{font-size:12px;color:var(--mut);padding:6px 18px 0}
+/* 지도 위 버튼 */
+#fab{position:fixed;right:12px;bottom:34px;display:flex;flex-direction:column;gap:8px;z-index:900}
+#fab button{width:44px;height:44px;border-radius:50%;border:0;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.32);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:#5f6368;font-size:11.5px;font-weight:700}
+#fab button.on{color:var(--blue)}
+/* 경로 */
+#route{position:fixed;top:12px;left:calc(var(--panel) + 12px);z-index:950;background:#fff;border-radius:14px;
+  box-shadow:0 2px 10px rgba(0,0,0,.25);padding:10px 12px;width:min(520px, calc(100vw - var(--panel) - 84px))}
+#route .rh{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:700;gap:8px}
+#route .rh small{font-weight:400;color:var(--mut);font-size:12px}
+#route .rh .btn{flex:none;white-space:nowrap}
+#route ol{margin:6px 0 8px;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:4px 6px;font-size:13px}
+#route li{display:inline-flex;align-items:center;gap:4px;background:#f1f3f4;border-radius:12px;padding:2px 4px 2px 8px}
+#route li button{border:0;background:none;color:var(--mut);cursor:pointer;font-size:14px;padding:0 3px;line-height:1}
+#route .rb{display:flex;gap:6px;flex-wrap:wrap}
+#route .rb .btn{padding:6px 11px;font-size:12.5px}
+#route .rb .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:#323232;color:#fff;font-size:13.5px;padding:10px 16px;
+  border-radius:8px;z-index:2000;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+.leaflet-container{font-family:inherit}
+@media (min-width:761px){.chips{flex-wrap:wrap;overflow:visible}}
+@media (max-width:760px){
+  #panel.detail .top{display:none}
+  #map{left:0}
+  #panel{top:auto;width:auto;right:0;height:var(--sheet);border-radius:16px 16px 0 0;transition:height .22s ease;box-shadow:0 -2px 12px rgba(0,0,0,.22)}
+  #panel.drag{transition:none}
+  #grab{display:block}
+  .top{padding-top:2px}
+  .title{display:none}
+  #fab{bottom:calc(var(--sheet) + 30px);transition:bottom .22s ease}
+  .leaflet-bottom{bottom:var(--sheet)}
+  #route{left:8px;right:8px;top:8px;width:auto}
+  #toast{bottom:calc(var(--sheet) + 16px)}
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<aside id="panel">
+  <div id="grab" aria-label="목록 크기 바꾸기"></div>
+  <div class="top">
+    <div class="title"><b id="ttl"></b><a id="srcLink" target="_blank" rel="noopener">네이버 원본 ↗</a></div>
+    <div class="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="시설명·번호·주소·노선 검색" autocomplete="off" enterkeyhint="search">
+      <button id="qclear" aria-label="검색어 지우기" hidden>×</button>
+    </div>
+    <div id="chips" class="chips"></div>
+    <div class="bar"><span id="count"></span>
+      <span class="seg"><button data-sort="no" class="on">번호순</button><button data-sort="near">가까운 순</button></span></div>
+  </div>
+  <div id="list"></div>
+  <div id="detail" hidden></div>
+</aside>
+<div id="fab">
+  <button id="bMe" title="내 위치" aria-label="내 위치"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg></button>
+  <button id="bAll" title="전체 보기" aria-label="전체 보기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  <button id="bLbl" class="on" title="이름표 켜기·끄기">이름</button>
+  <button id="bSat" title="위성 사진">위성</button>
+</div>
+<div id="route" hidden></div>
+<div id="toast"></div>
+<script>
+"use strict";
+const DATA = [{"id":"4577898708","label":"1종 001. 건넌교","kind":"교량","grade":"1","no":"001","name":"건넌교","cat":"교량1","road":"특별광역시도","note":"","addr":"경기도 용인시 처인구 삼가동 165-41","lat":37.24285,"lng":127.16277,"removed":false},{"id":"4577903830","label":"1종 002. 기선교","kind":"교량","grade":"1","no":"002","name":"기선교","cat":"교량1","road":"일45호선","note":"","addr":"경기도 용인시 처인구 남동 618-9","lat":37.22449,"lng":127.2217,"removed":false},{"id":"4577905723","label":"1종 003. 남리교(상행선)","kind":"교량","grade":"1","no":"003","name":"남리교(상행선)","cat":"교량1","road":"일45호선","note":"","addr":"경기도 용인시 처인구 남동 352-9","lat":37.21633,"lng":127.20724,"removed":false},{"id":"4577906773","label":"1종 004. 남리교(하행선)","kind":"교량","grade":"1","no":"004","name":"남리교(하행선)","cat":"교량1","road":"일45호선","note":"","addr":"경기도 용인시 처인구 남동 347-10","lat":37.2181,"lng":127.20876,"removed":false},{"id":"4577913674","label":"1종  005. 마평육교(상행선)","kind":"교량","grade":"1","no":"005","name":"마평육교(상행선)","cat":"교량1","road":"일45호선","note":"","addr":"경기도 용인시 처인구 마평동 산58-20","lat":37.23101,"lng":127.23156,"removed":false},{"id":"4577915225","label":"1종 006. 마평육교 (하행선)","kind":"교량","grade":"1","no":"006","name":"마평육교 (하행선)","cat":"교량1","road":"일45호선","note":"","addr":"경기도 용인시 처인구 마평동 266-22","lat":37.23262,"lng":127.23217,"removed":false},{"id":"4577949756","label":"2종 001. (신)수포교","kind":"교량","grade":"2","no":"001","name":"(신)수포교","cat":"교량2","road":"일45호선","note":"","addr":"경기도 용인시 처인구 유방동 480-9","lat":37.26535,"lng":127.21312,"removed":false},{"id":"4577951397","label":"2종 002. 남리대교","kind":"교량","grade":"2","no":"002","name":"남리대교","cat":"교량2","road":"시도","note":"","addr":"경기도 용인시 처인구 남동 3-7","lat":37.22702,"lng":127.21157,"removed":false},{"id":"4577960464","label":"2종 003.수역교","kind":"교량","grade":"2","no":"003","name":"수역교","cat":"교량2","road":"지314호선","note":"","addr":"경기도 용인시 처인구 이동읍 어비리 1450-3","lat":37.10875,"lng":127.18154,"removed":false},{"id":"4577963832","label":"2종 004. 용인고가육교","kind":"교량","grade":"2","no":"004","name":"용인고가육교","cat":"교량2","road":"일45호선","note":"","addr":"경기도 용인시 처인구 김량장동 산37-9","lat":37.23303,"lng":127.20705,"removed":false},{"id":"4577965853","label":"2종 005. 유림교","kind":"교량","grade":"2","no":"005","name":"유림교","cat":"교량2","road":"시도","note":"","addr":"경기도 용인시 처인구 유방동 443-6","lat":37.2528,"lng":127.21821,"removed":false},{"id":"4577967364","label":"2종 006. 전궁교","kind":"교량","grade":"2","no":"006","name":"전궁교","cat":"교량2","road":"시도","note":"","addr":"경기도 용인시 처인구 남사읍 전궁리 428-1","lat":37.1104,"lng":127.15267,"removed":false},{"id":"4577968559","label":"2종 007. 고유교","kind":"교량","grade":"2","no":"007","name":"고유교","cat":"교량2","road":"시도","note":"","addr":"경기도 용인시 처인구 고림동 680-4","lat":37.24983,"lng":127.21558,"removed":false},{"id":"4577970350","label":"2종 008. 김량대교","kind":"교량","grade":"2","no":"008","name":"김량대교","cat":"교량2","road":"시도","note":"","addr":"경기도 용인시 처인구 금령로 118","lat":37.23775,"lng":127.20975,"removed":false},{"id":"4577976206","label":"3종 001. (구)매능교","kind":"교량","grade":"3","no":"001","name":"(구)매능교","cat":"교량3","road":"현황도로","note":"","addr":"경기도 용인시 처인구 남사읍 완장리 456-10","lat":37.1561,"lng":127.17721,"removed":false},{"id":"4577981394","label":"3종 002. (구)산정교","kind":"교량","grade":"3","no":"002","name":"(구)산정교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 남사읍 봉무리 126","lat":37.1329,"lng":127.15431,"removed":false},{"id":"4577983399","label":"3종 003. (구)원암교","kind":"교량","grade":"3","no":"003","name":"(구)원암교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 원암리 217-16","lat":37.09435,"lng":127.14401,"removed":false},{"id":"4578015464","label":"3종 004. (구)창동교","kind":"교량","grade":"3","no":"004","name":"(구)창동교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 남사읍 창리 490","lat":37.13187,"lng":127.1696,"removed":false},{"id":"4578016750","label":"3종 005. (신)산정교","kind":"교량","grade":"3","no":"005","name":"(신)산정교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 봉무리 126","lat":37.13286,"lng":127.15423,"removed":false},{"id":"4578018058","label":"3종 006. (신)창동교","kind":"교량","grade":"3","no":"006","name":"(신)창동교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 창리 490","lat":37.13611,"lng":127.17053,"removed":false},{"id":"4578020817","label":"3종 007. 고징교","kind":"교량","grade":"3","no":"007","name":"고징교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 고림동 731-3","lat":37.24024,"lng":127.21244,"removed":false},{"id":"4578022412","label":"3종 008. 고진천교","kind":"교량","grade":"3","no":"008","name":"고진천교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 고림동 903-19","lat":37.23616,"lng":127.21627,"removed":false},{"id":"4578024614","label":"3종 009. 구수동교","kind":"교량","grade":"3","no":"009","name":"구수동교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 백자로 550","lat":37.19522,"lng":127.2017,"removed":false},{"id":"4578025629","label":"3종 010. 구사봉교","kind":"교량","grade":"3","no":"010","name":"구사봉교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 해곡동 508","lat":37.19617,"lng":127.25402,"removed":false},{"id":"4578026791","label":"3종 011. 금북교","kind":"교량","grade":"3","no":"011","name":"금북교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 김량장동 133-1","lat":37.23764,"lng":127.20692,"removed":false},{"id":"4578029915","label":"3종 012. 금학교","kind":"교량","grade":"3","no":"012","name":"금학교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 김량장동 144-5","lat":37.23781,"lng":127.20849,"removed":false},{"id":"4578031108","label":"3종 013. 길업교","kind":"교량","grade":"3","no":"013","name":"길업교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 호동 551-28","lat":37.20194,"lng":127.24448,"removed":false},{"id":"4578032585","label":"3종 014. 능말2교","kind":"교량","grade":"3","no":"014","name":"능말2교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 김량장동 223-14","lat":37.23685,"lng":127.2035,"removed":false},{"id":"4578034256","label":"3종 015. 능말교","kind":"교량","grade":"3","no":"015","name":"능말교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 김량장동 266-5","lat":37.23683,"lng":127.20232,"removed":false},{"id":"4578035630","label":"3종 016. 덕성1교","kind":"교량","grade":"3","no":"016","name":"덕성1교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 덕성리 1039-3","lat":37.17261,"lng":127.20003,"removed":false},{"id":"4578036795","label":"3종 017. 덕성교","kind":"교량","grade":"3","no":"017","name":"덕성교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 덕성리 1130-51","lat":37.16729,"lng":127.20163,"removed":false},{"id":"4578055354","label":"3종 018. 동인교","kind":"교량","grade":"3","no":"018","name":"동인교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 시미리 579-5","lat":37.15416,"lng":127.20129,"removed":false},{"id":"4578056740","label":"3종 019. 마전교","kind":"교량","grade":"3","no":"019","name":"마전교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 마평동 758-88","lat":37.23243,"lng":127.23762,"removed":false},{"id":"4578059664","label":"3종 020. 마평1교","kind":"교량","grade":"3","no":"020","name":"마평1교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 고림동 903-19","lat":37.239,"lng":127.21445,"removed":false},{"id":"4578061003","label":"3종 021. 마평교","kind":"교량","grade":"3","no":"021","name":"마평교","cat":"교량3","road":"일45호선","note":"","addr":"경기도 용인시 처인구 금령로 118-1","lat":37.23545,"lng":127.2098,"removed":false},{"id":"4578062943","label":"3종 022. 매능교","kind":"교량","grade":"3","no":"022","name":"매능교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 완장리 456-7","lat":37.15539,"lng":127.17687,"removed":false},{"id":"4578064762","label":"3종 023. 무수교","kind":"교량","grade":"3","no":"023","name":"무수교","cat":"교량3","road":"국지98호선","note":"","addr":"경기도 용인시 처인구 유방동 528-6","lat":37.24459,"lng":127.21358,"removed":false},{"id":"4578066575","label":"3종 024. 북리교","kind":"교량","grade":"3","no":"024","name":"북리교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 북리 950-65","lat":37.1455,"lng":127.14336,"removed":false},{"id":"4578068924","label":"3종 025. 삼삼교","kind":"교량","grade":"3","no":"025","name":"삼삼교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 운학동 640-8","lat":37.22055,"lng":127.22648,"removed":false},{"id":"4578070182","label":"3종 026. 샘골1교","kind":"교량","grade":"3","no":"026","name":"샘골1교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 백옥대로 599","lat":37.19227,"lng":127.20605,"removed":false},{"id":"4578071341","label":"3종 027. 샘골2교","kind":"교량","grade":"3","no":"027","name":"샘골2교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 백옥대로 599","lat":37.18998,"lng":127.20477,"removed":false},{"id":"4578075220","label":"3종 028. 서리교","kind":"교량","grade":"3","no":"028","name":"서리교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 서리 3-9","lat":37.19391,"lng":127.19018,"removed":false},{"id":"4578076520","label":"3종 029. 석성교","kind":"교량","grade":"3","no":"029","name":"석성교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 김량장동 473","lat":37.23729,"lng":127.20552,"removed":false},{"id":"4578077729","label":"3종 030. 송전2교","kind":"교량","grade":"3","no":"030","name":"송전2교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 송전리 1082-1","lat":37.14338,"lng":127.1992,"removed":false},{"id":"4578088066","label":"3종 031. 신성교","kind":"교량","grade":"3","no":"031","name":"신성교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 역북동 429-31","lat":37.23724,"lng":127.19332,"removed":false},{"id":"4578089723","label":"3종 032. 신촌교(2)","kind":"교량","grade":"3","no":"032","name":"신촌교(2)","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 진목리 68-5","lat":37.10182,"lng":127.13946,"removed":false},{"id":"4578093884","label":"3종 033. 신평교","kind":"교량","grade":"3","no":"033","name":"신평교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 마평동 758-89","lat":37.22868,"lng":127.24493,"removed":false},{"id":"4578097105","label":"3종 034. 애동교","kind":"교량","grade":"3","no":"034","name":"애동교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 묵리 1235-6","lat":37.18684,"lng":127.21388,"removed":false},{"id":"4578488400","label":"3종 035. 연화교","kind":"교량","grade":"3","no":"035","name":"연화교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 백자로 436","lat":37.19489,"lng":127.19581,"removed":false},{"id":"4578489925","label":"3종 036. 예지교","kind":"교량","grade":"3","no":"036","name":"예지교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 이동읍 화산리 531-5","lat":37.14589,"lng":127.20676,"removed":false},{"id":"4578491410","label":"3종 037. 예직교","kind":"교량","grade":"3","no":"037","name":"예직교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 호동 342-2","lat":37.19165,"lng":127.25732,"removed":false},{"id":"4578492503","label":"3종 038. 용인교","kind":"교량","grade":"3","no":"038","name":"용인교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 김량장동 18-6","lat":37.23318,"lng":127.21109,"removed":false},{"id":"4578493361","label":"3종 039. 유방1교","kind":"교량","grade":"3","no":"039","name":"유방1교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 유방동 1019-15","lat":37.26189,"lng":127.19298,"removed":false},{"id":"4578494718","label":"3종 040. 유평3교","kind":"교량","grade":"3","no":"040","name":"유평3교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 통삼리 915-15","lat":37.11911,"lng":127.13077,"removed":false},{"id":"4578495688","label":"3종 041. 일신교","kind":"교량","grade":"3","no":"041","name":"일신교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 봉무리 96-1","lat":37.13416,"lng":127.15449,"removed":false},{"id":"4578496782","label":"3종 042. 제1천리교","kind":"교량","grade":"3","no":"042","name":"제1천리교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 천리 150-2","lat":37.1889,"lng":127.20616,"removed":false},{"id":"4578498219","label":"3종 043. 중복교","kind":"교량","grade":"3","no":"043","name":"중복교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 남사읍 방아리 857-8","lat":37.1093,"lng":127.17213,"removed":false},{"id":"4578499662","label":"3종 044. 천리2교(철거)","kind":"교량","grade":"3","no":"044","name":"천리2교(철거)","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 천리 690-5","lat":37.19776,"lng":127.20741,"removed":true},{"id":"4578504095","label":"3종 045. 첫다리교","kind":"교량","grade":"3","no":"045","name":"첫다리교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 역북동 632-21","lat":37.23856,"lng":127.18607,"removed":false},{"id":"4578508659","label":"3종 046. 청연교","kind":"교량","grade":"3","no":"046","name":"청연교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 신송로 49","lat":37.23405,"lng":127.22359,"removed":false},{"id":"4578512003","label":"3종 047. 통삼교","kind":"교량","grade":"3","no":"047","name":"통삼교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 통삼리 915-6","lat":37.12318,"lng":127.13077,"removed":false},{"id":"4578513245","label":"3종 048. 포용교","kind":"교량","grade":"3","no":"048","name":"포용교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 고림동 820-1","lat":37.26614,"lng":127.2198,"removed":false},{"id":"4578515737","label":"3종 049. 호동교","kind":"교량","grade":"3","no":"049","name":"호동교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 호동 520-2","lat":37.18869,"lng":127.26259,"removed":false},{"id":"4578517202","label":"3종 050. 고림교","kind":"교량","grade":"3","no":"050","name":"고림교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 고림동 820-32","lat":37.24911,"lng":127.2306,"removed":false},{"id":"4578518397","label":"3종 051. 굴암교","kind":"교량","grade":"3","no":"051","name":"굴암교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 이동읍 묵리 1165","lat":37.17447,"lng":127.2314,"removed":false},{"id":"4578523828","label":"3종 052. 봉무2교","kind":"교량","grade":"3","no":"052","name":"봉무2교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 봉무리 701-37","lat":37.12517,"lng":127.15609,"removed":false},{"id":"4578525510","label":"3종 053. 유방교","kind":"교량","grade":"3","no":"053","name":"유방교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 유방동 1019-11","lat":37.25621,"lng":127.21238,"removed":false},{"id":"4578526870","label":"3종 054. 인정교","kind":"교량","grade":"3","no":"054","name":"인정교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 유방동 1007-86","lat":37.26523,"lng":127.21479,"removed":false},{"id":"4578528578","label":"3종 055. 남리육교","kind":"교량","grade":"3","no":"055","name":"남리육교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남동 379","lat":37.21931,"lng":127.2108,"removed":false},{"id":"4578534888","label":"3종 056. (신)기선교","kind":"교량","grade":"3","no":"056","name":"(신)기선교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 운학동 813","lat":37.22254,"lng":127.22369,"removed":false},{"id":"4578536496","label":"3종 057. 문화교","kind":"교량","grade":"3","no":"057","name":"문화교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 김량장동 453-2","lat":37.23717,"lng":127.19799,"removed":false},{"id":"4578807209","label":"3종 058. 금학2교","kind":"교량","grade":"3","no":"058","name":"금학2교","cat":"교량3","road":"시도","note":"중간의 빗줄로부터 동쪽부분","addr":"경기도 용인시 처인구 삼가동 559","lat":37.23955,"lng":127.1745,"removed":false},{"id":"4578709357","label":"3종 059. 묘봉2교","kind":"교량","grade":"3","no":"059","name":"묘봉2교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 이동읍 묘봉리 970-4","lat":37.12462,"lng":127.21936,"removed":false},{"id":"4578711778","label":"3종 060. 묘봉교","kind":"교량","grade":"3","no":"060","name":"묘봉교","cat":"교량3","road":"지방도","note":"","addr":"경기도 용인시 처인구 이동읍 묘봉리 947-5","lat":37.12615,"lng":127.22447,"removed":false},{"id":"4578713846","label":"3종 061. 행운교","kind":"교량","grade":"3","no":"061","name":"행운교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 이동읍 덕성리 1130","lat":37.18111,"lng":127.20131,"removed":false},{"id":"4578715079","label":"3종 062. 세월교","kind":"교량","grade":"3","no":"062","name":"세월교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 이동읍 천리 1068","lat":37.20229,"lng":127.21042,"removed":false},{"id":"4578716292","label":"3종 063. 덕성2교","kind":"교량","grade":"3","no":"063","name":"덕성2교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 이동읍 덕성리 1130","lat":37.17843,"lng":127.19913,"removed":false},{"id":"4578717403","label":"3종 064. 유평교","kind":"교량","grade":"3","no":"064","name":"유평교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 남사읍 봉명리 283-4","lat":37.11579,"lng":127.13025,"removed":false},{"id":"4578720203","label":"3종 065. 신촌교(1)","kind":"교량","grade":"3","no":"065","name":"신촌교(1)","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 남사읍 남촌로 7","lat":37.1018,"lng":127.1394,"removed":false},{"id":"4578721695","label":"3종 066. 중동1교","kind":"교량","grade":"3","no":"066","name":"중동1교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 완장리 456-4","lat":37.16294,"lng":127.17416,"removed":false},{"id":"4578726977","label":"3종 067. 새말교","kind":"교량","grade":"3","no":"067","name":"새말교","cat":"교량3","road":"","note":"","addr":"경기도 평택시 진위면 동천리 312","lat":37.11915,"lng":127.10957,"removed":false},{"id":"4578728164","label":"3종 068. (신)아곡2교","kind":"교량","grade":"3","no":"068","name":"(신)아곡2교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 남사읍 아곡리 9","lat":37.14834,"lng":127.17283,"removed":false},{"id":"4578729424","label":"3종 069. 상동1교","kind":"교량","grade":"3","no":"069","name":"상동1교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 남사읍 완장리 456-10","lat":37.16049,"lng":127.17756,"removed":false},{"id":"4578730345","label":"3종 070. 처인교","kind":"교량","grade":"3","no":"070","name":"처인교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 신송로 49","lat":37.23497,"lng":127.23191,"removed":false},{"id":"4578731344","label":"3종 071. 새마을6교","kind":"교량","grade":"3","no":"071","name":"새마을6교","cat":"교량3","road":"","note":"","addr":"경기도 용인시 처인구 운학동 266","lat":37.20453,"lng":127.25129,"removed":false},{"id":"4578732502","label":"3종 072. 새마을7교","kind":"교량","grade":"3","no":"072","name":"새마을7교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 운학동 746-12","lat":37.20455,"lng":127.2545,"removed":false},{"id":"4578733623","label":"3종 073. 호동1교","kind":"교량","grade":"3","no":"073","name":"호동1교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 운학동 338-9","lat":37.2043,"lng":127.24111,"removed":false},{"id":"4578734949","label":"3종 074. 범안교","kind":"교량","grade":"3","no":"074","name":"범안교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 운학동 813-12","lat":37.20944,"lng":127.23194,"removed":false},{"id":"4578736778","label":"3종 075. 호리교","kind":"교량","grade":"3","no":"075","name":"호리교","cat":"교량3","road":"시도","note":"","addr":"경기도 용인시 처인구 운학동 427-5","lat":37.20785,"lng":127.23445,"removed":false},{"id":"4578737902","label":"3종 076. 묵동교","kind":"교량","grade":"3","no":"076","name":"묵동교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 호동 551-18","lat":37.21569,"lng":127.22887,"removed":false},{"id":"4578739238","label":"3종 077. 대곡교","kind":"교량","grade":"3","no":"077","name":"대곡교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 운학동 507-1","lat":37.21115,"lng":127.23064,"removed":false},{"id":"4578742262","label":"3종 078. 묘봉리 인도교","kind":"교량","grade":"3","no":"078","name":"묘봉리 인도교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 이동읍 묘봉리 산194","lat":37.12377,"lng":127.21518,"removed":false},{"id":"4578750518","label":"3종 079. 역북소공원 인도교","kind":"교량","grade":"3","no":"079","name":"역북소공원 인도교","cat":"교량3","road":"비법정도로","note":"","addr":"경기도 용인시 처인구 역북동 632-43","lat":37.23701,"lng":127.1934,"removed":false},{"id":"4578777426","label":"옹벽 001. 2종 명지대앞옹벽(1호)","kind":"옹벽","grade":"2","no":"001","name":"명지대앞옹벽(1호)","cat":"옹벽","road":"중3-124","note":"","addr":"경기도 용인시 처인구 남동 599-1","lat":37.22445,"lng":127.1863,"removed":false},{"id":"4578779975","label":"옹벽 2종 003. 명지대앞옹벽(2호)","kind":"옹벽","grade":"2","no":"003","name":"명지대앞옹벽(2호)","cat":"옹벽","road":"중3-124","note":"","addr":"경기도 용인시 처인구 남동 676-4","lat":37.22421,"lng":127.18322,"removed":false},{"id":"4578782086","label":"옹벽 2종 003. 중1-53호 TD옹벽","kind":"옹벽","grade":"2","no":"003","name":"중1-53호 TD옹벽","cat":"옹벽","road":"중1-53","note":"","addr":"경기도 용인시 처인구 유방동 116-45","lat":37.25527,"lng":127.21121,"removed":false},{"id":"4578753410","label":"육교 001. 3종 시청앞보도육교","kind":"육교","grade":"3","no":"001","name":"시청앞보도육교","cat":"육교","road":"일45호선","note":"","addr":"경기도 용인시 처인구 삼가동 250-26","lat":37.23942,"lng":127.17356,"removed":false},{"id":"4578755218","label":"육교 002. 태성고교앞보도육교","kind":"육교","grade":"","no":"002","name":"태성고교앞보도육교","cat":"육교","road":"일45호선","note":"","addr":"경기도 용인시 처인구 백옥대로 1066","lat":37.23079,"lng":127.21014,"removed":false},{"id":"4578760315","label":"터널 001. 2종 역북터널","kind":"터널","grade":"2","no":"001","name":"역북터널","cat":"터널","road":"지318호선","note":"","addr":"경기도 용인시 처인구 유방동 803-1","lat":37.25609,"lng":127.19309,"removed":false},{"id":"4578762154","label":"터널 3종 002. 여수곡터널","kind":"터널","grade":"3","no":"002","name":"여수곡터널","cat":"터널","road":"지321호선","note":"","addr":"경기도 용인시 처인구 유방동 산60-4","lat":37.26787,"lng":127.19375,"removed":false},{"id":"4578763906","label":"터널 3종 003. 학고개터널","kind":"터널","grade":"3","no":"003","name":"학고개터널","cat":"터널","road":"지321호선","note":"","addr":"경기도 용인시 처인구 삼가동 산117-10","lat":37.2237,"lng":127.17083,"removed":false}];
+const META = {"folder":"2026년 처인구 도로구조물 정기안전","source":"https://naver.me/FTdvkpSB","updated":"2026-06-29","snapshot":"2026-11-03","count":101};
+const CATS = [
+  {k:"교량1", t:"1종", full:"교량 1종"}, {k:"교량2", t:"2종", full:"교량 2종"}, {k:"교량3", t:"3종", full:"교량 3종"},
+  {k:"옹벽", t:"옹벽", full:"옹벽"}, {k:"육교", t:"육교", full:"육교"}, {k:"터널", t:"터널", full:"터널"}];
+const CI = Object.fromEntries(CATS.map((c, i) => [c.k, i]));
+const byId = Object.fromEntries(DATA.map(r => [r.id, r]));
+const UA = navigator.userAgent;
+const isAndroid = /Android/i.test(UA);
+const isPhone = isAndroid || /iPhone|iPad|iPod/i.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const mq = matchMedia("(max-width: 760px)");
+const APPNAME = location.protocol.startsWith("http") ? location.origin + location.pathname : "cheoin-facility-map";
+const DONE_KEY = "cheoin2026-done-v1", ROUTE_KEY = "cheoin2026-route-v1", MAX_ROUTE = 6;
+const $ = s => document.querySelector(s);
+const enc = encodeURIComponent;
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids) if (c != null && c !== false) e.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return e;
+}
+function load(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2400); }
+const glyph = r => r.kind === "교량" ? r.grade : r.kind[0];
+const norm = s => (s || "").toLowerCase().replace(/\s+/g, "");
+for (const r of DATA) r._hay = norm([r.label, r.name, r.addr, r.road, r.note, CATS[CI[r.cat]].full, r.kind].join(" "));
+
+const state = { sel: null, cats: new Set(), q: "", left: false, sort: "no", me: null, labels: true, sat: false,
+  route: load(ROUTE_KEY, []).filter(id => byId[id]) };
+const done = load(DONE_KEY, {});
+
+/* ---------- 지도 ---------- */
+const map = L.map("map", { zoomControl: false, attributionControl: false, maxZoom: 19, tap: true });
+L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+if (!isPhone) L.control.zoom({ position: "topright", zoomInTitle: "확대", zoomOutTitle: "축소" }).addTo(map);
+const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(map);
+const esri = "https://server.arcgisonline.com/ArcGIS/rest/services/";
+const sat = L.layerGroup([
+  L.tileLayer(esri + "World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, maxNativeZoom: 18, attribution: "위성: Esri World Imagery" }),
+  L.tileLayer(esri + "Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, maxNativeZoom: 18, opacity: .75 }),
+  L.tileLayer(esri + "Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, maxNativeZoom: 18 })]);
+
+const cluster = L.markerClusterGroup({ maxClusterRadius: 36, showCoverageOnHover: false, spiderfyOnMaxZoom: true,
+  iconCreateFunction: c => L.divIcon({ className: "clu", html: "<div>" + Number(c.getChildCount()) + "</div>", iconSize: [34, 34] }) });
+map.addLayer(cluster);
+
+function iconFor(r) {
+  const cls = ["dot", "c" + CI[r.cat]]; if (done[r.id]) cls.push("done"); if (r.removed) cls.push("rm");
+  const d = el("div", { class: cls.join(" "), text: done[r.id] ? "✓" : glyph(r) });
+  return L.divIcon({ className: "pin", html: d.outerHTML, iconSize: [24, 24], iconAnchor: [12, 12], tooltipAnchor: [10, 0] });
+}
+const markers = {};
+for (const r of DATA) {
+  const m = L.marker([r.lat, r.lng], { icon: iconFor(r), title: r.label, riseOnHover: true });
+  m.bindTooltip(el("span", { text: r.name }), { permanent: true, direction: "right", className: "lbl", interactive: false });
+  m.on("click", () => select(r.id, { from: "map" }));
+  markers[r.id] = m;
+}
+const hi = L.marker([0, 0], { icon: L.divIcon({ className: "hi", html: "<div></div>", iconSize: [46, 46] }), interactive: false, keyboard: false, zIndexOffset: -1000 });
+const routeLayer = L.layerGroup().addTo(map);
+let meMarker = null, meCircle = null;
+
+function updateLabels() { $("#map").classList.toggle("labels-on", state.labels && map.getZoom() >= 14); }
+map.on("zoomend", updateLabels);
+map.on("click", () => { if (mq.matches) { if (!$("#detail").hidden) closeDetail(); setSheet("peek"); } });
+
+/* ---------- 패널 · 바닥 시트 ---------- */
+const panel = $("#panel");
+let sheet = "peek";
+function peekPx() { // 상세(검색창 숨김)일 때도 이름·버튼 줄은 남게
+  return panel.classList.contains("detail") ? 150 : $("#grab").offsetHeight + panel.querySelector(".top").offsetHeight; }
+function sheetPx(s) { const H = innerHeight; return s === "peek" ? peekPx() : s === "half" ? Math.round(H * .52) : H - 64; }
+function setSheet(s) {
+  if (!mq.matches) { document.documentElement.style.setProperty("--sheet", "0px"); panel.style.height = ""; return; }
+  sheet = s; const px = sheetPx(s); panel.style.height = px + "px"; document.documentElement.style.setProperty("--sheet", px + "px");
+}
+(function dragSheet() {
+  const g = $("#grab"); let y0 = 0, h0 = 0, moved = false, on = false;
+  g.addEventListener("pointerdown", e => { if (!mq.matches) return; on = true; moved = false; y0 = e.clientY; h0 = panel.offsetHeight; panel.classList.add("drag"); g.setPointerCapture(e.pointerId); });
+  g.addEventListener("pointermove", e => { if (!on) return; const dy = e.clientY - y0; if (Math.abs(dy) > 5) moved = true;
+    const h = Math.max(peekPx(), Math.min(innerHeight - 64, h0 - dy)); panel.style.height = h + "px"; document.documentElement.style.setProperty("--sheet", h + "px"); });
+  const end = () => { if (!on) return; on = false; panel.classList.remove("drag");
+    if (!moved) { setSheet(sheet === "peek" ? "half" : sheet === "half" ? "full" : "peek"); return; }
+    const h = panel.offsetHeight; const opts = ["peek", "half", "full"];
+    setSheet(opts.reduce((a, b) => Math.abs(sheetPx(b) - h) < Math.abs(sheetPx(a) - h) ? b : a)); };
+  g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end);
+})();
+mq.addEventListener("change", () => { setSheet("peek"); map.invalidateSize(); });
+addEventListener("resize", () => { if (mq.matches) setSheet(sheet); });
+
+/* ---------- 필터 · 목록 ---------- */
+function renderChips() {
+  const box = $("#chips"); box.replaceChildren();
+  for (const c of CATS) {
+    const n = DATA.filter(r => r.cat === c.k).length;
+    box.append(el("button", { class: "chip" + (state.cats.has(c.k) ? " on" : ""), title: c.full + "만 보기",
+      onclick: () => { state.cats.has(c.k) ? state.cats.delete(c.k) : state.cats.add(c.k); renderChips(); refresh(); } },
+      el("i", { class: "c" + CI[c.k] }), c.t, el("span", { class: "n", text: n })));
+  }
+  box.append(el("button", { class: "chip" + (state.left ? " on" : ""), title: "점검 완료 표시한 곳 숨기기",
+    onclick: () => { state.left = !state.left; renderChips(); refresh(); } }, "남은 곳만"));
+}
+function visible() {
+  const toks = state.q.trim().split(/\s+/).filter(Boolean).map(norm);
+  return DATA.filter(r => (state.cats.size === 0 || state.cats.has(r.cat)) && (!state.left || !done[r.id]) && toks.every(t => r._hay.includes(t)));
+}
+function dist(r) {
+  if (!state.me) return null;
+  const R = 6371000, toR = Math.PI / 180, dLat = (r.lat - state.me.lat) * toR, dLng = (r.lng - state.me.lng) * toR;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(state.me.lat * toR) * Math.cos(r.lat * toR) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+const fmtDist = m => m == null ? "" : m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(m < 10000 ? 1 : 0) + " km";
+const catLabel = r => r.kind + (r.grade ? " " + r.grade + "종" : "");
+const subline = r => [catLabel(r) + " " + r.no, r.road].filter(Boolean).join(" · ");
+let lastVis = [];
+function refresh() {
+  const vis = visible(); lastVis = vis;
+  cluster.clearLayers(); cluster.addLayers(vis.map(r => markers[r.id]));
+  renderList();
+  const nDone = DATA.filter(r => done[r.id]).length;
+  $("#count").textContent = (vis.length === DATA.length ? "전체 " + DATA.length + "곳" : vis.length + "곳 / 전체 " + DATA.length) + (nDone ? " · 완료 " + nDone : "");
+}
+function renderList() {
+  const list = $("#list");
+  let rows = lastVis;
+  if (state.sort === "near" && state.me) rows = [...rows].sort((a, b) => dist(a) - dist(b));
+  const kids = rows.map(r => el("button", { class: "row" + (done[r.id] ? " is-done" : "") + (state.sel === r.id ? " sel" : ""), "data-id": r.id, onclick: () => select(r.id) },
+    el("span", { class: "dot c" + CI[r.cat] + (done[r.id] ? " done" : "") + (r.removed ? " rm" : ""), text: done[r.id] ? "✓" : glyph(r) }),
+    el("span", { class: "rt" }, el("b", { text: r.name }), el("small", { text: subline(r) }), el("small", { text: r.addr })),
+    state.me ? el("span", { class: "dist", text: fmtDist(dist(r)) }) : null));
+  if (!kids.length) kids.push(el("div", { class: "empty", text: "찾는 시설이 없습니다. 검색어나 필터를 바꿔 보세요." }));
+  kids.push(el("div", { class: "src" }, "자료: 네이버 지도 공유 폴더 「" + META.folder + "」 " + META.count + "곳 (" + META.snapshot + " 받음) · ",
+    el("a", { href: META.source, target: "_blank", rel: "noopener", text: "원본 열기" })));
+  list.replaceChildren(...kids);
+}
+
+/* ---------- 선택 · 상세 ---------- */
+function focusOn(r, from) {
+  const ll = L.latLng(r.lat, r.lng);
+  const z = from === "map" ? map.getZoom() : Math.max(map.getZoom(), 17);
+  const s = mq.matches ? sheetPx("half") : 0;
+  const c = map.unproject(map.project(ll, z).add([0, s / 2]), z);
+  // 아주 가까운 두 곳(예: (구)·(신)산정교 8 m)은 확대해도 묶여 있으므로, 확대 애니메이션이 끝난 뒤 펼친다
+  const after = (n = 0) => {
+    const m = markers[r.id], vp = cluster.getVisibleParent(m);
+    if (!vp || vp === m || !vp.spiderfy) return;
+    if (cluster._inZoomAnimation && n < 15) { setTimeout(() => after(n + 1), 100); return; }
+    vp.spiderfy();
+  };
+  map.once("moveend", () => setTimeout(after, 280));
+  if (from === "map") map.panTo(c); else map.flyTo(c, z, { duration: .55 });
+}
+function select(id, { from } = {}) {
+  const r = byId[id]; if (!r) return;
+  state.sel = id; hi.setLatLng([r.lat, r.lng]).addTo(map);
+  renderDetail(r); $("#list").hidden = true; $("#detail").hidden = false; $("#detail").scrollTop = 0; panel.classList.add("detail");
+  history.replaceState(null, "", "#f=" + id);
+  if (mq.matches) setSheet("half");
+  focusOn(r, from);
+}
+function closeDetail() {
+  state.sel = null; hi.remove(); $("#detail").hidden = true; $("#list").hidden = false; panel.classList.remove("detail");
+  history.replaceState(null, "", location.pathname + location.search); renderList();
+}
+function nmap(path, params) {
+  const qs = Object.entries(Object.assign({}, params, { appname: APPNAME })).map(([k, v]) => k + "=" + enc(v)).join("&");
+  return isAndroid
+    ? "intent://" + path + "?" + qs + "#Intent;scheme=nmap;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.nhn.android.nmap;end"
+    : "nmap://" + path + "?" + qs;
+}
+const kpt = (name, lat, lng) => enc(name) + "," + lat + "," + lng;
+const links = r => ({
+  kakao: "https://map.kakao.com/link/to/" + kpt(r.name, r.lat, r.lng),
+  road: "https://map.kakao.com/link/roadview/" + r.lat + "," + r.lng,
+  naver: nmap("route/car", { dlat: r.lat, dlng: r.lng, dname: r.name }),
+  tmap: "tmap://route?rGoName=" + enc(r.name) + "&rGoX=" + r.lng + "&rGoY=" + r.lat,
+});
+const ICON = {
+  car: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M21.7 11.3 12.7 2.3a1 1 0 0 0-1.4 0l-9 9a1 1 0 0 0 0 1.4l9 9a1 1 0 0 0 1.4 0l9-9a1 1 0 0 0 0-1.4ZM14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5l3.5 3.5Z"/></svg>',
+  nav: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 4.5 20.3l.7.7L12 18l6.8 3 .7-.7Z"/></svg>',
+  eye: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+};
+function act(label, href, icon, primary, blank) {
+  const a = el("a", { class: "act" + (primary ? " primary" : ""), href, target: blank ? "_blank" : null, rel: blank ? "noopener" : null });
+  const ic = el("span", { class: "ic" }); ic.innerHTML = icon; a.append(ic, el("span", { text: label })); return a;
+}
+async function copy(text, what) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) { const t = el("textarea", { style: "position:fixed;opacity:0" }); t.value = text; document.body.append(t); t.select(); document.execCommand("copy"); t.remove(); }
+  toast(what + " 복사했습니다");
+}
+function renderDetail(r) {
+  const L_ = links(r), d = dist(r), inRoute = state.route.includes(r.id), cat = CATS[CI[r.cat]];
+  const acts = [act("카카오맵 길찾기", L_.kakao, ICON.car, true, true)];
+  if (isPhone) acts.push(act("네이버 길찾기", L_.naver, ICON.car), act("티맵", L_.tmap, ICON.nav));
+  acts.push(act("로드뷰", L_.road, ICON.eye, false, true));
+  const ln = (k, v, btn) => el("div", { class: "ln" }, el("span", { class: "k", text: k }), el("span", { class: "v", text: v }), btn || null);
+  $("#detail").replaceChildren(
+    el("div", { class: "dh" }, el("button", { onclick: closeDetail }, "← 목록"), el("button", { onclick: closeDetail, "aria-label": "닫기" }, "✕")),
+    el("div", { class: "dt" }, el("span", { class: "dot big c" + CI[r.cat] + (r.removed ? " rm" : ""), text: glyph(r) }),
+      el("div", null, el("h2", { text: r.name }), el("div", { class: "muted", text: catLabel(r) + " · " + r.no + "번" + (d != null ? " · " + fmtDist(d) : "") }))),
+    el("div", { class: "tags" }, r.road ? el("span", { class: "tag", text: "노선 " + r.road }) : null,
+      r.note ? el("span", { class: "tag", text: r.note }) : null,
+      r.removed ? el("span", { class: "tag warn", text: "철거" }) : null,
+      done[r.id] ? el("span", { class: "tag ok", text: "점검 완료 표시" }) : null),
+    el("div", { class: "acts" }, ...acts),
+    el("div", { class: "info" },
+      ln("주소", r.addr, el("button", { onclick: () => copy(r.addr, "주소를") }, "복사")),
+      ln("좌표", r.lat.toFixed(5) + ", " + r.lng.toFixed(5), el("button", { onclick: () => copy(r.lat + ", " + r.lng, "좌표를") }, "복사")),
+      ln("네이버 이름", r.label)),
+    el("div", { class: "acts2" },
+      el("button", { class: "btn" + (inRoute ? " on" : ""), onclick: () => toggleRoute(r.id) }, inRoute ? "✓ 경로에 담김" : "+ 경로에 담기"),
+      el("button", { class: "btn" + (done[r.id] ? " on" : ""), onclick: () => toggleDone(r.id) }, done[r.id] ? "✓ 점검 완료" : "점검 완료 표시"),
+      el("button", { class: "btn", onclick: () => copy(location.href, "이 시설 링크를") }, "링크 복사")),
+    el("p", { class: "fine", text: "점검 완료 표시는 이 기기(브라우저)에만 저장되고 다른 사람과 공유되지 않습니다." }));
+}
+function toggleDone(id) {
+  const r = byId[id]; if (done[id]) delete done[id]; else done[id] = Date.now(); save(DONE_KEY, done);
+  markers[id].setIcon(iconFor(r));
+  refresh();
+  if (state.sel === id) renderDetail(r);
+}
+
+/* ---------- 경로 담기 ---------- */
+function orderNearest() {
+  const pts = state.route.map(id => byId[id]); if (pts.length < 2) return;
+  let cur = state.me || pts[0]; const left = state.me ? pts : pts.slice(1), out = state.me ? [] : [pts[0]];
+  const dd = (a, b) => (a.lat - b.lat) ** 2 + ((a.lng - b.lng) * Math.cos(a.lat * Math.PI / 180)) ** 2;
+  while (left.length) { let bi = 0; left.forEach((p, i) => { if (dd(cur, p) < dd(cur, left[bi])) bi = i; }); cur = left.splice(bi, 1)[0]; out.push(cur); }
+  state.route = out.map(r => r.id); save(ROUTE_KEY, state.route); renderRoute();
+}
+function toggleRoute(id) {
+  const i = state.route.indexOf(id);
+  if (i >= 0) state.route.splice(i, 1);
+  else { if (state.route.length >= MAX_ROUTE) { toast("경로에는 " + MAX_ROUTE + "곳까지 담을 수 있습니다"); return; } state.route.push(id); }
+  save(ROUTE_KEY, state.route); renderRoute(); if (state.sel) renderDetail(byId[state.sel]);
+}
+function routeLinks() {
+  const pts = state.route.map(id => byId[id]);
+  const seq = (state.me ? [kpt("내 위치", state.me.lat.toFixed(6), state.me.lng.toFixed(6))] : []).concat(pts.map(r => kpt(r.name, r.lat, r.lng)));
+  const kakao = seq.length === 1 ? "https://map.kakao.com/link/to/" + seq[0] : "https://map.kakao.com/link/by/car/" + seq.join("/");
+  const last = pts[pts.length - 1], p = { dlat: last.lat, dlng: last.lng, dname: last.name };
+  pts.slice(0, -1).forEach((r, i) => { p["v" + (i + 1) + "lat"] = r.lat; p["v" + (i + 1) + "lng"] = r.lng; p["v" + (i + 1) + "name"] = r.name; });
+  return { kakao, naver: nmap("route/car", p) };
+}
+function renderRoute() {
+  const box = $("#route"); routeLayer.clearLayers();
+  if (!state.route.length) { box.hidden = true; return; }
+  const pts = state.route.map(id => byId[id]), RL = routeLinks();
+  const line = (state.me ? [[state.me.lat, state.me.lng]] : []).concat(pts.map(r => [r.lat, r.lng]));
+  if (line.length > 1) L.polyline(line, { color: "#1a73e8", weight: 4, opacity: .75, dashArray: "8 8", interactive: false }).addTo(routeLayer);
+  pts.forEach((r, i) => L.marker([r.lat, r.lng], { icon: L.divIcon({ className: "num", html: "<div>" + (i + 1) + "</div>", iconSize: [18, 18], iconAnchor: [-6, 22] }), interactive: false, keyboard: false, zIndexOffset: 1000 }).addTo(routeLayer));
+  box.hidden = false;
+  box.replaceChildren(
+    el("div", { class: "rh" }, el("span", null, "경로 " + pts.length + "곳 ", el("small", { text: state.me ? "출발: 내 위치" : "출발: 1번 (내 위치 켜면 현 위치)" })),
+      el("button", { class: "btn", style: "padding:3px 9px;font-size:12px", onclick: () => { state.route = []; save(ROUTE_KEY, []); renderRoute(); if (state.sel) renderDetail(byId[state.sel]); } }, "비우기")),
+    el("ol", null, ...pts.map((r, i) => el("li", null, (i + 1) + ". " + r.name, el("button", { "aria-label": r.name + " 빼기", onclick: () => toggleRoute(r.id) }, "×")))),
+    el("div", { class: "rb" },
+      pts.length > 1 ? el("button", { class: "btn", onclick: orderNearest }, "가까운 순서로") : null,
+      el("a", { class: "btn primary", href: RL.kakao, target: "_blank", rel: "noopener", style: "text-decoration:none" }, "카카오맵으로 안내"),
+      isPhone ? el("a", { class: "btn", href: RL.naver, style: "text-decoration:none" }, "네이버로 안내") : null));
+}
+
+/* ---------- 내 위치 ---------- */
+let watchId = null, wantCenter = false, lastDrawn = null;
+function locate(center) {
+  if (!navigator.geolocation) { toast("이 브라우저에서는 위치를 쓸 수 없습니다"); return; }
+  if (state.me && center) map.flyTo([state.me.lat, state.me.lng], Math.max(map.getZoom(), 15), { duration: .5 });
+  if (watchId != null) return;
+  wantCenter = center; $("#bMe").classList.add("on");
+  watchId = navigator.geolocation.watchPosition(pos => {
+    const first = !state.me;
+    state.me = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+    const ll = [state.me.lat, state.me.lng];
+    if (!meMarker) { meCircle = L.circle(ll, { radius: state.me.acc, color: "#4285f4", weight: 1, fillOpacity: .12, interactive: false }).addTo(map);
+      meMarker = L.marker(ll, { icon: L.divIcon({ className: "me", html: "<div></div>", iconSize: [18, 18] }), interactive: false, keyboard: false, zIndexOffset: 2000 }).addTo(map); }
+    else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(state.me.acc); }
+    if (first && wantCenter) map.flyTo(ll, Math.max(map.getZoom(), 15), { duration: .5 });
+    if (first || !lastDrawn || dist(lastDrawn) > 40) { lastDrawn = { lat: state.me.lat, lng: state.me.lng }; renderList(); renderRoute(); if (state.sel) renderDetail(byId[state.sel]); }
+  }, err => {
+    navigator.geolocation.clearWatch(watchId); watchId = null; $("#bMe").classList.remove("on");
+    toast(err.code === 1 ? "위치 권한이 꺼져 있습니다 (브라우저 설정에서 허용)" : "현재 위치를 찾지 못했습니다");
+    if (state.sort === "near" && !state.me) setSort("no");
+  }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
+}
+function setSort(s) {
+  state.sort = s; document.querySelectorAll(".seg button").forEach(b => b.classList.toggle("on", b.dataset.sort === s));
+  if (s === "near" && !state.me) { locate(false); toast("현재 위치를 찾는 중…"); }
+  renderList();
+}
+
+/* ---------- 이벤트 ---------- */
+const q = $("#q");
+q.addEventListener("input", () => { state.q = q.value; $("#qclear").hidden = !q.value; if (!$("#detail").hidden) closeDetail(); refresh(); });
+q.addEventListener("focus", () => { if (mq.matches) setSheet("full"); });
+q.addEventListener("keydown", e => {
+  if (e.key === "Enter") { q.blur(); if (lastVis.length === 1) select(lastVis[0].id); else if (mq.matches) setSheet("half"); fitVisible(); }
+  if (e.key === "Escape") { q.value = ""; q.dispatchEvent(new Event("input")); }
+});
+$("#qclear").onclick = () => { q.value = ""; q.dispatchEvent(new Event("input")); q.focus(); };
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => setSort(b.dataset.sort));
+$("#bMe").onclick = () => locate(true);
+$("#bAll").onclick = () => fitVisible(true);
+$("#bLbl").onclick = () => { state.labels = !state.labels; $("#bLbl").classList.toggle("on", state.labels); updateLabels(); };
+$("#bSat").onclick = () => {
+  state.sat = !state.sat; $("#bSat").classList.toggle("on", state.sat); $("#bSat").textContent = state.sat ? "지도" : "위성";
+  $("#bSat").title = state.sat ? "일반 지도" : "위성 사진"; $("#map").classList.toggle("sat", state.sat);
+  if (state.sat) { map.removeLayer(osm); sat.addTo(map); } else { map.removeLayer(sat); osm.addTo(map); }
+};
+addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+  if (e.key === "Escape" && !$("#detail").hidden && document.activeElement !== q) closeDetail();
+});
+function fitVisible(all) {
+  const rs = all ? DATA : (lastVis.length ? lastVis : DATA);
+  const b = L.latLngBounds(rs.map(r => [r.lat, r.lng]));
+  const s = mq.matches ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sheet")) || 0) : 0;
+  map.fitBounds(b, { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + s], maxZoom: 16 });
+}
+
+/* ---------- 시작 ---------- */
+$("#ttl").textContent = META.folder;
+$("#srcLink").href = META.source;
+document.title = META.folder + " — 시설물 지도";
+renderChips(); refresh(); renderRoute(); setSheet("peek");
+fitVisible(true); updateLabels();
+const m0 = location.hash.match(/^#f=(\d+)$/);
+if (m0 && byId[m0[1]]) setTimeout(() => select(m0[1]), 300);
+</script>
+</body>
+</html>
